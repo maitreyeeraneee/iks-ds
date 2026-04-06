@@ -1,0 +1,47 @@
+{
+  "social media": {
+    "tamas": [
+      {"action": "Pranayama 4-7-8 breathing (2min)", "verse": "Bhagavad Gita 6.16: Moderation in eating/sleeping/activities"},
+      {"action": "Savasana relaxation (3min)", "verse": "Gita 6.13-14: Posture for meditation"}
+    ],
+    "rajas": [
+      {"action": "Short mindful walk in nature", "verse": "Gita 2.62: Dwelling on senses leads to attachment"},
+      {"action": "Chant 'Om Shanti' 11 times", "verse": "Gita 17.23: Om is the essence"}
+    ],
+    "sattva": [
+      {"action": "Read Gita Ch3 Karma Yoga (5min)", "verse": "Gita 3.8: Action is better than inaction"}
+    ]
+  },
+  "gaming": {
+    "tamas": [
+      {"action": "Nadi Shodhana alternate nostril breathing", "verse": "Gita 5.27: Gaze between eyebrows, steady breath"},
+      {"action": "Savasana (5min)", "verse": "Gita 2.70: Undisturbed by desires"}
+    ],
+    "rajas": [
+      {"action": "Focus puzzle task (2min)", "verse": "Gita 6.26: Bring wandering mind back"},
+      {"action": "Affirm: I control my desires", "verse": "Gita 6.36: Mind is friend/enemy"}
+    ],
+    "sattva": [
+      {"action": "Anulom Vilom pranayama", "verse": "Yoga Sutra 2.52: Breath control removes veils"}
+    ]
+  },
+  "food": {
+    "tamas": [
+      {"action": "Warm water with lemon", "verse": "Gita 17.8: Sattvic foods promote clarity"},
+      {"action": "Mindful eating practice (nuts/fruits)", "verse": "Gita 17.9: Rajas foods cause pain"}
+    ],
+    "rajas": [
+      {"action": "Sattvic snack reminder", "verse": "Gita 17.10: Tamas foods cause ignorance"}
+    ]
+  },
+  "smoking": {
+    "tamas": [
+      {"action": "Deep belly breathing 10x", "verse": "Gita 4.29: Breath offering in Yoga"},
+      {"action": "Fennel seeds chew", "verse": "Gita 6.16: Neither too much nor too little"}
+    ],
+    "rajas": [
+      {"action": "Gita affirmation: I am detached", "verse": "Gita 2.56: Steadiness amid opposites"}
+    ]
+  }
+}
+
