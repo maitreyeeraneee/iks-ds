@@ -1,4 +1,6 @@
-# 🧠 Dopamine Reset AI + IKS: Production ML App for Addiction Recovery
+# 🧠 Dopamine Reset + IKS: Production ML App for Addiction Recovery
+
+project for iks, indian knowlegde systems by me to integrate iks and ds
 
 [![Streamlit App](https://img.shields.io/badge/Live_Demo-FF6B6B?style=for-the-badge&logo=streamlit&logoColor=white)](http://localhost:8501/?embed=true)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
@@ -13,7 +15,7 @@
 - **Reinforcement Learning** (optimizes interventions)
 - **Real-time Risk Dashboards** (RF + SHAP)
 
-**For recruiters:** Production-ready Python/Streamlit/ML code showcasing end-to-end ML, UI/UX, scalable architecture.
+**key:** Production-ready Python/Streamlit/ML code showcasing end-to-end ML, UI/UX, scalable architecture.
 
 ## 🔥 **Demo Features**
 | Feature | Tech Stack | Impact |
@@ -32,10 +34,6 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-**Live Screenshots:**
-![Dashboard](screenshots/dashboard.png)
-![Triguna](screenshots/triguna.png)
-![Interventions](screenshots/interventions.png)
 
 ## 🏗️ **Tech Stack**
 ```
@@ -53,26 +51,15 @@ Deployment: Production-ready, Docker-ready
 | Triguna Accuracy | 87% |
 | Intervention Success | +23% streak uplift |
 
-## 🎖️ **Recruiter Highlights**
+## 🎖️ **Highlights**
 - **Full-Stack ML Engineer**: Model → Production UI → Deployment
 - **Advanced UI**: Glassmorphism, responsive, interactive dashboards
 - **Domain Innovation**: Ayurveda/ML fusion (IKS research)
 - **Scalable Code**: Modular, error-handled, session-persistent
 - **Production Ready**: Virtualenv, requirements, caching (@st.cache)
 
-## 🔮 **Roadmap**
-- [x] Core ML + UI
-- [x] RL Optimization  
-- [ ] OpenAI ChatGPT Integration
-- [ ] Wearable API (Fitbit HRV)
-- [ ] Mobile PWA
-- [ ] Docker + Vercel deploy
-
-## 📝 **License**
-MIT - Free for commercial/research use.
-
 ## 🤝 **Contribute**
-Issues/PRs welcome! Star if useful for your portfolio 🚀
+Issues/PRs welcome! Star if useful for your portfolio 
 
-**Built with ❤️ by [Your Name] - ML Engineer & IKS Researcher**
+**built with ❤️ by maitreyee - just another student trying to learn data science lol**
 
