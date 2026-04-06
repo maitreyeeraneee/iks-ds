@@ -5,7 +5,7 @@ import plotly.express as px
 from model import ModelTrainer
 from utils import (
     create_gauge_chart, create_line_chart, create_heatmap, create_pie_chart,
-    create_triguna_pie, generate_insights, simulate_alert, triguna_mapping,
+    create_triguna_pie, generate_insights, simulate_alert, get_triguna_percentages,
     intervention_engine, calculate_discipline_score, update_streak_and_rl,
     iks_chatbot_response, load_iks_interventions, init_iks_session_state, get_state_key
 )
@@ -45,13 +45,13 @@ def load_model():
         model = joblib.load('model_trained.joblib')
         return model
     except:
-        st.warning("No trained model. Using rule-based predictions.")
+        pass  # Silent fallback
         class RuleBasedModel:
             def __init__(self):
                 pass
             def predict(self, input_data):
                 import numpy as np
-                from utils import triguna_mapping
+                from utils import get_triguna_percentages as triguna_mapping
                 triguna_dict = triguna_mapping(pd.DataFrame([input_data]))[0]
                 risk_score = 50 + (input_data['screen_time'] * 5) - (input_data['sleep_hours'] * 3) + np.random.normal(0,5)
                 risk_score = np.clip(risk_score, 0, 100)
@@ -81,7 +81,7 @@ with st.sidebar:
         goal_pct = st.slider("✅ Goal %", 0, 100, 70, key="slider_goal")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    if st.button("🔮 Predict & Analyze", use_container_width=True, key="predict_btn"):
+    if st.button("🔮 Predict & Analyze", width='stretch', key="predict_btn"):
         input_data = {
             'mood': mood, 'sleep_hours': sleep, 'screen_time': screen,
             'addiction_type': addiction, 'goal_achieved': goal_pct / 100
@@ -94,18 +94,10 @@ with st.sidebar:
         
         st.session_state.predictions = predictions
         input_df = pd.DataFrame([input_data])
-        try:
-            triguna_result = triguna_mapping(input_df)
-            if isinstance(triguna_result, dict):
-                triguna_dict = triguna_result
-            elif hasattr(triguna_result, 'iloc'):
-                triguna_dict = triguna_result.iloc[0].to_dict() if len(triguna_result) > 0 else {'sattva':33, 'rajas':33, 'tamas':34}
-            else:
-                triguna_dict = {'sattva':33, 'rajas':33, 'tamas':34}
-            input_df['triguna_dict'] = [triguna_dict]
-        except Exception as e:
-            st.warning(f"Triguna calculation failed: {e}. Using defaults.")
-            input_df['triguna_dict'] = [{'sattva':33, 'rajas':33, 'tamas':34}]
+        # Single triguna source
+        triguna_pct = get_triguna_percentages(input_df)
+        st.session_state.triguna_pct = triguna_pct
+        
         input_df['date'] = pd.Timestamp.now()
         input_df['risk_score'] = predictions['risk_score']
         input_df['risk_state'] = predictions['risk_state']
@@ -114,13 +106,14 @@ with st.sidebar:
         required_cols = ['date', 'mood', 'sleep_hours', 'screen_time', 'addiction_type', 'goal_achieved', 'risk_score', 'risk_state']
         for col in required_cols:
             if col not in input_df.columns:
-                input_df[col] = 0  # or NaN
+                input_df[col] = 0
         
+        # Store columns from single source
         input_df = input_df.assign(
-            triguna_sattva = lambda df: [d.get('sattva', 33) for d in df.triguna_dict],
-            triguna_rajas = lambda df: [d.get('rajas', 33) for d in df.triguna_dict],
-            triguna_tamas = lambda df: [d.get('tamas', 34) for d in df.triguna_dict]
-        ).drop('triguna_dict', axis=1)
+            triguna_sattva = triguna_pct['sattva'],
+            triguna_rajas = triguna_pct['rajas'],
+            triguna_tamas = triguna_pct['tamas']
+        )
         
         # Safe append
         if st.session_state.user_history.empty:
@@ -141,13 +134,9 @@ with st.sidebar:
         st.metric("Score", f"{score:.0f}/100", delta=5)
     
     if st.session_state.intervention_history:
-        st.dataframe(pd.DataFrame(st.session_state.intervention_history[-5:]), use_container_width=True)
+        st.dataframe(pd.DataFrame(st.session_state.intervention_history[-5:]), width='stretch')
 
     st.markdown("---")
-    # Chatbot
-    st.markdown("### 💬 IKS Chatbot")
-    if 'chat_messages' not in st.session_state:
-        st.session_state.chat_messages = []
 
 # Main tabs
 tab1, tab2, tab3, tab4 = st.tabs(["Risk Analysis", "Triguna", "Interventions", "Chat & Progress"])
@@ -155,7 +144,7 @@ tab1, tab2, tab3, tab4 = st.tabs(["Risk Analysis", "Triguna", "Interventions", "
 if 'predictions' in st.session_state:
     predictions = st.session_state.predictions
     features_df = st.session_state.input_data
-    triguna = { 'sattva': features_df['triguna_sattva'].iloc[0], 'rajas': features_df['triguna_rajas'].iloc[0], 'tamas': features_df['triguna_tamas'].iloc[0] }
+    triguna = st.session_state.get('triguna_pct', {'sattva': 33.33, 'rajas': 33.33, 'tamas': 33.34})
     df_hist = st.session_state.user_history.copy()
     if df_hist.empty:
         df_hist = pd.DataFrame({'date': [pd.Timestamp.now()], 'screen_time': [0]})
@@ -164,15 +153,12 @@ if 'predictions' in st.session_state:
 
     with tab1:
         st.markdown("### 🎯 Risk Dashboard")
-        col1, col2 = st.columns([3,1])
-        with col1:
-            try:
-                fig_gauge = create_gauge_chart(predictions['risk_score'], "Risk Score")
-                st.plotly_chart(fig_gauge, use_container_width=True, key="risk_gauge")
-            except Exception as e:
-                st.error(f"Gauge chart error: {e}")
-        with col2:
-            st.markdown(f'<div class="glass" style="padding:1.5rem;text-align:center;"><h3>{predictions["risk_state"].upper()}</h3><h2 style="color:#667eea;">{predictions["risk_score"]:.0f}</h2></div>', unsafe_allow_html=True)
+        try:
+            fig_gauge = create_gauge_chart(predictions['risk_score'], "Risk Score")
+            st.plotly_chart(fig_gauge, width='stretch', key="risk_gauge")
+        except Exception as e:
+            st.error(f"Gauge chart error: {e}")
+        st.markdown(f'<div class="glass" style="padding:1.5rem;text-align:center;"><h3>{predictions["risk_state"].upper()}</h3><h2 style="color:#667eea;">{predictions["risk_score"]:.0f}</h2></div>', unsafe_allow_html=True)
         
         st.markdown("**Insights:**")
         for insight in generate_insights(predictions, features_df):
@@ -181,39 +167,49 @@ if 'predictions' in st.session_state:
         simulate_alert(predictions['risk_score'], st.session_state)
 
         st.markdown("### 📊 History")
-        cols = st.columns(4)
-        with cols[0]: 
-            required_cols = ['date', 'screen_time', 'risk_score', 'addiction_type']
-            safe_hist = df_hist[ [c for c in required_cols if c in df_hist.columns] ].copy() if not df_hist.empty else pd.DataFrame()
-            
-            try:
-                fig_screen = create_line_chart(safe_hist, 'screen_time')
-                st.plotly_chart(fig_screen, use_container_width=True, key="hist_screen")
-            except:
-                st.empty()
-            try:
-                fig_heatmap = create_heatmap(safe_hist)
-                st.plotly_chart(fig_heatmap, use_container_width=True, key="hist_heatmap")
-            except:
-                st.empty()
-            try:
-                fig_pie = create_pie_chart(safe_hist)
-                st.plotly_chart(fig_pie, use_container_width=True, key="hist_pie")
-            except:
-                st.empty()
-            try:
-                fig_risk = create_line_chart(safe_hist, 'risk_score')
-                st.plotly_chart(fig_risk, use_container_width=True, key="hist_risk")
-            except:
-                st.empty()
+        chart_cols = st.columns(4)
+        required_cols = ['date', 'screen_time', 'risk_score', 'addiction_type']
+        safe_hist = df_hist[ [c for c in required_cols if c in df_hist.columns] ].copy() if not df_hist.empty else pd.DataFrame()
+        
+        try:
+            fig_screen = create_line_chart(safe_hist, 'screen_time')
+            with chart_cols[0]:
+                st.plotly_chart(fig_screen, width='stretch', key="hist_screen")
+        except:
+            pass
+        try:
+            fig_heatmap = create_heatmap(safe_hist)
+            with chart_cols[1]:
+                st.plotly_chart(fig_heatmap, width='stretch', key="hist_heatmap")
+        except:
+            pass
+        try:
+            fig_pie = create_pie_chart(safe_hist)
+            with chart_cols[2]:
+                st.plotly_chart(fig_pie, width='stretch', key="hist_pie")
+        except:
+            pass
+        try:
+            fig_risk = create_line_chart(safe_hist, 'risk_score')
+            with chart_cols[3]:
+                st.plotly_chart(fig_risk, width='stretch', key="hist_risk")
+        except:
+            pass
 
     with tab2:
         st.markdown("### ⚖️ Triguna Balance")
-        dominant = predictions.get('triguna_dominant', max(triguna, key=triguna.get))
-        st.markdown(f"**Dominant Guna: {dominant.upper()}** | {triguna[dominant]:.0f}%")
+        st.markdown("""
+**Triguna (Three Gunas from Bhagavad Gita):**
+- **Sattva (High = Good):** Purity, peace, wisdom, discipline - supports focus & recovery
+- **Rajas (Balanced):** Activity, passion, drive - good for action but excess causes cravings
+- **Tamas (Low = Better):** Inertia, confusion, addiction - high tamas triggers relapse
+**Goal:** Increase Sattva, balance Rajas, reduce Tamas.
+        """)
+        dominant = max(triguna, key=triguna.get)
+        st.markdown(f"**Dominant: {dominant.upper()}** ({triguna[dominant]:.1f}%)")
         try:
             fig_triguna = create_triguna_pie(triguna)
-            st.plotly_chart(fig_triguna, use_container_width=True, key="triguna_pie")
+            st.plotly_chart(fig_triguna, width='stretch', key="triguna_pie")
         except Exception as e:
             st.error(f"Triguna pie error: {e}")
         
@@ -237,23 +233,17 @@ if 'predictions' in st.session_state:
                 st.markdown(f"*\"{rec['verse']}\"*")
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button(f"✅ Success ({rec['action'][:20]}...)", use_container_width=True, key=f"success_btn_{i}"):
+                    if st.button(f"✅ Success ({rec['action'][:20]}...)", width='stretch', key=f"success_btn_{i}"):
                         update_streak_and_rl(True, rec, state_key, st.session_state)
                         st.success("Streak + RL updated! Score ↑")
                         st.rerun()
                 with col2:
-                    if st.button(f"❌ Failed", use_container_width=True, key=f"failed_btn_{i}"):
+                    if st.button(f"❌ Failed", width='stretch', key=f"failed_btn_{i}"):
                         update_streak_and_rl(False, rec, state_key, st.session_state)
                         st.error("Log noted. Try next time!")
                         st.rerun()
         
-        # Scalability stubs
-        st.markdown("---")
-        col_api, col_wear = st.columns(2)
-        with col_api:
-            st.button("🔌 Connect OpenAI Chat", disabled=True, key="api_connect_btn")
-        with col_wear:
-            st.button("⌚ Sync Wearable HR", disabled=True, key="wear_sync_btn")
+        
 
     with tab4:
         st.markdown("### Progress & Chat")

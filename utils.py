@@ -109,7 +109,7 @@ def simulate_alert(risk_score: float, session_state: Any):
         session_state.alert_active = True
         with st.container():
             st.error("🚨 HIGH RISK! Practice IKS intervention now.")
-            if st.button("Reset Alert", use_container_width=True, key="reset_alert_btn"):
+            if st.button("Reset Alert", width='stretch', key="reset_alert_btn"):
                 session_state.alert_active = False
                 st.rerun()
     elif risk_score <= 70:
@@ -153,34 +153,28 @@ def rl_update_q(state_key: str, action_idx: int, reward: float, next_interventio
     new_q = current_q + lr * (reward + gamma * next_max_q - current_q)
     q_table[state_key][action_idx] = new_q
 
-def triguna_mapping(features: pd.DataFrame) -> list[dict]:
-    """Enhanced Triguna mapping - safe for DataFrame input, returns list of dicts for row-wise."""
-    if features.empty:
-        return [{'sattva': 33.3, 'rajas': 33.3, 'tamas': 33.4}]
+def get_triguna_percentages(features: pd.DataFrame) -> dict:
+    """Single source of truth - clean dict, sum=100."""
+    if features.empty or len(features) == 0:
+        return {'sattva': 33.33, 'rajas': 33.33, 'tamas': 33.34}
     
-    result = []
-    for idx in range(len(features)):
-        row = features.iloc[idx]
-        try:
-            mood = row.get('mood', 3.0)
-            sleep = row.get('sleep_hours', 7.0)
-            screen = row.get('screen_time', 4.0)
-            goal = row.get('goal_achieved', 0.7)
-            
-            sattva_score = (mood / 5 * sleep / 8 * goal) * 100
-            tamas_score = ((5 - mood) / 5 * screen / 8 * (1 - goal)) * 100
-            rajas_score = 50.0
-            total = sattva_score + tamas_score + rajas_score
-            if total > 0:
-                sattva_score = (sattva_score / total) * 100
-                rajas_score = (rajas_score / total) * 100
-                tamas_score = (tamas_score / total) * 100
-            
-            result.append({'sattva': sattva_score, 'rajas': rajas_score, 'tamas': tamas_score})
-        except Exception:
-            result.append({'sattva': 33.3, 'rajas': 33.3, 'tamas': 33.4})
+    row = features.iloc[0]
+    mood = row.get('mood', 3.0)
+    sleep = row.get('sleep_hours', 7.0)
+    screen = row.get('screen_time', 4.0)
+    goal = row.get('goal_achieved', 0.7)
     
-    return result
+    sattva_raw = mood / 5 * sleep / 8 * goal
+    tamas_raw = (5 - mood) / 5 * screen / 8 * (1 - goal)
+    rajas_raw = 1 - sattva_raw - tamas_raw
+    rajas_raw = max(0, rajas_raw)
+    
+    total_raw = sattva_raw + rajas_raw + tamas_raw or 1
+    sattva = round((sattva_raw / total_raw) * 100, 2)
+    rajas = round((rajas_raw / total_raw) * 100, 2)
+    tamas = round(100 - sattva - rajas, 2)
+    
+    return {'sattva': sattva, 'rajas': rajas, 'tamas': tamas}
 
 def intervention_engine(risk_state: str, triguna: Dict[str, float], addiction_type: str, 
                        session_state: Any, predictions=None, iks_data: Dict = None) -> List[Dict]:

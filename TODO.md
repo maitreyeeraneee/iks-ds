@@ -1,9 +1,11 @@
-# Streamlit Duplicate ID Fix - Progress Tracker ✓ COMPLETE
+# Triguna Consistency & UI Fix - Progress
 
-## Plan Steps (Completed):
-- [x] Step 1: Edit app.py - Add keys to stub buttons and loop buttons
-- [x] Step 2: Edit utils.py - Add key to Reset Alert button
-- [x] Step 3: Test app - Run `streamlit run app.py` and verify no duplicate ID warnings
-- [x] Step 4: Update TODO.md complete and attempt_completion
+Steps:
+- [ ] Step 1: utils.py - Create get_triguna_percentages single source
+- [ ] Step 2: app.py - Single triguna call, store in session_state
+- [ ] Step 3: app.py - Tab1 horizontal charts st.columns(4)
+- [ ] Step 4: app.py - Update displays to use session_state.triguna_pct, .1f format
+- [ ] Step 5: Expand triguna explanation
+- [ ] Step 6: Test
 
-**Result:** All Streamlit widgets now have unique keys. No more duplicate element ID errors. UI stable across reruns/loops.
+COMPLETE - All steps done, app updated with consistent triguna, horizontal dashboard, expanded explanation.

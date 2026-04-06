@@ -11,7 +11,7 @@ import shap
 import joblib
 from typing import Dict, Any, Tuple
 import streamlit as st
-from utils import triguna_mapping
+from utils import get_triguna_percentages
 
 class DataProcessor:
     def __init__(self):
@@ -139,7 +139,7 @@ class ModelTrainer:
             triguna_pred_idx = self.triguna_classifier.predict(X_proc)[0]
             triguna_dominant = self.triguna_le.inverse_transform([triguna_pred_idx])[0]
             
-            triguna_probs = triguna_mapping(df_input)[0]
+            triguna_probs = get_triguna_percentages(df_input)
             triguna_probs['dominant'] = triguna_dominant
             
             risk_state = 'high' if risk_score > 70 else 'medium' if risk_score > 40 else 'low'
