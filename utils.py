@@ -109,7 +109,7 @@ def simulate_alert(risk_score: float, session_state: Any):
         session_state.alert_active = True
         with st.container():
             st.error("🚨 HIGH RISK! Practice IKS intervention now.")
-            if st.button("Reset Alert", use_container_width=True):
+            if st.button("Reset Alert", use_container_width=True, key="reset_alert_btn"):
                 session_state.alert_active = False
                 st.rerun()
     elif risk_score <= 70:

@@ -237,12 +237,12 @@ if 'predictions' in st.session_state:
                 st.markdown(f"*\"{rec['verse']}\"*")
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button(f"✅ Success ({rec['action'][:20]}...)", use_container_width=True):
+                    if st.button(f"✅ Success ({rec['action'][:20]}...)", use_container_width=True, key=f"success_btn_{i}"):
                         update_streak_and_rl(True, rec, state_key, st.session_state)
                         st.success("Streak + RL updated! Score ↑")
                         st.rerun()
                 with col2:
-                    if st.button(f"❌ Failed", use_container_width=True):
+                    if st.button(f"❌ Failed", use_container_width=True, key=f"failed_btn_{i}"):
                         update_streak_and_rl(False, rec, state_key, st.session_state)
                         st.error("Log noted. Try next time!")
                         st.rerun()
@@ -251,9 +251,9 @@ if 'predictions' in st.session_state:
         st.markdown("---")
         col_api, col_wear = st.columns(2)
         with col_api:
-            st.button("🔌 Connect OpenAI Chat", disabled=True)
+            st.button("🔌 Connect OpenAI Chat", disabled=True, key="api_connect_btn")
         with col_wear:
-            st.button("⌚ Sync Wearable HR", disabled=True)
+            st.button("⌚ Sync Wearable HR", disabled=True, key="wear_sync_btn")
 
     with tab4:
         st.markdown("### Progress & Chat")
