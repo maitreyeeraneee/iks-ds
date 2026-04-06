@@ -1,4 +1,5 @@
-# 🧠 Dopamine Reset + IKS: Production ML App for Addiction Recovery
+# 🧠 Dopamine Reset + IKS 
+## -> Production ML App for Addiction Recovery
 
 **project for iks, indian knowlegde systems by me to integrate iks and ds**
 
