@@ -20,26 +20,26 @@ class DataProcessor:
         self.derived_features = ['screen_sleep_ratio']
         self.triguna_features = ['sattva', 'rajas', 'tamas']
         
-    def load_data(self, csv_path: str = 'data/raw/sample_data_augmented.csv') -> pd.DataFrame:
-        """Load augmented data with error handling."""
-        try:
-            if Path(csv_path).exists():
-                df = pd.read_csv(csv_path)
-            else:
-                st.warning(f"Dataset {csv_path} not found. Using fallback empty DF.")
-                return pd.DataFrame()
-        except Exception as e:
-            st.error(f"Error loading data: {e}")
+    def load_data(self, df_history: pd.DataFrame = None, csv_path: str = None) -> pd.DataFrame:
+        """Load user history or CSV."""
+        if df_history is not None and not df_history.empty:
+            df = df_history.copy()
+        elif csv_path and Path(csv_path).exists():
+            df = pd.read_csv(csv_path)
+        else:
             return pd.DataFrame()
-        
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        df['hour'] = df['date'].dt.hour.fillna(12)
-        df['is_weekend'] = df['date'].dt.weekday.fillna(0) >= 5
-        df['screen_sleep_ratio'] = df['screen_time'] / (df['sleep_hours'] + 1e-6)
-        df['sattva'] = pd.to_numeric(df['sattva'], errors='coerce').fillna(50)
-        df['rajas'] = pd.to_numeric(df['rajas'], errors='coerce').fillna(25)
-        df['tamas'] = pd.to_numeric(df['tamas'], errors='coerce').fillna(25)
-        df['dominant_guna'] = df[['sattva', 'rajas', 'tamas']].idxmax(axis=1)
+        # Add derived
+        if 'date' in df:
+            df['date'] = pd.to_datetime(df['date'], errors='coerce')
+            df['hour'] = df['date'].dt.hour.fillna(12)
+            df['is_weekend'] = df['date'].dt.weekday.fillna(0) >= 5
+        if 'screen_time' in df and 'sleep_hours' in df:
+            df['screen_sleep_ratio'] = df['screen_time'] / (df['sleep_hours'] + 1e-6)
+        # Triguna flatten
+        for guna in ['triguna_sattva', 'triguna_rajas', 'triguna_tamas']:
+            if guna in df:
+                df[ guna.replace('triguna_', '') ] = df[ guna ]
+        df['dominant_guna'] = df[['sattva', 'rajas', 'tamas']].idxmax(axis=1) if all(g in df for g in ['sattva', 'rajas', 'tamas']) else 'sattva'
         return df
     
     def prepare_features_target(self, df: pd.DataFrame):
@@ -91,11 +91,11 @@ class ModelTrainer:
             
         self.preprocessor = ColumnTransformer(transformers)
         
-    def train(self, regenerate_data: bool = False):
-        """Robust training with error handling."""
-        df = self.processor.load_data()
-        if df.empty:
-            st.error("Cannot train: No training data available.")
+    def train(self, df_history: pd.DataFrame = None, regenerate_data: bool = False):
+        """Robust training on user history."""
+        df = self.processor.load_data(df_history=df_history)
+        if df.empty or len(df) < 10:
+            st.info("Need 10+ history entries to train model.")
             return
             
         X, y_risk, y_triguna_class = self.processor.prepare_features_target(df)

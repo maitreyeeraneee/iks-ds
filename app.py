@@ -14,7 +14,7 @@ import json
 
 # Page config
 st.set_page_config(
-    page_title="Dopamine Reset AI + IKS",
+    page_title="Dopamine Reset + IKS",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -36,24 +36,36 @@ h1, h2, h3 { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 # Init IKS session state
 init_iks_session_state()
 
+# Dynamic user history DF - moved to init_iks_session_state if needed
+
 # Model load/train
 @st.cache_resource
 def load_model():
     try:
-        return joblib.load('model_trained.joblib')
+        model = joblib.load('model_trained.joblib')
+        return model
     except:
-        with st.spinner("🔄 Training enhanced model with Triguna..."):
-            trainer = ModelTrainer()
-            trainer.train()
-            joblib.dump(trainer, 'model_trained.joblib')
-        return joblib.load('model_trained.joblib')
+        st.warning("No trained model. Using rule-based predictions.")
+        class RuleBasedModel:
+            def __init__(self):
+                pass
+            def predict(self, input_data):
+                import numpy as np
+                from utils import triguna_mapping
+                triguna_dict = triguna_mapping(pd.DataFrame([input_data]))[0]
+                risk_score = 50 + (input_data['screen_time'] * 5) - (input_data['sleep_hours'] * 3) + np.random.normal(0,5)
+                risk_score = np.clip(risk_score, 0, 100)
+                risk_state = 'high' if risk_score > 70 else 'medium' if risk_score > 40 else 'low'
+                return {'risk_score': risk_score, 'risk_state': risk_state, 'triguna': triguna_dict}
+        model = RuleBasedModel()
+        return model
 
 model = load_model()
 
 st.markdown("""
 <div class='glass' style='padding: 2rem; margin: 1rem; text-align: center;'>
-    <h1 style='color: #667eea;'>🧠 Dopamine Reset AI + Indian Knowledge Systems</h1>
-    <p style='color: #b8b8d1;'>AI Risk Prediction | Triguna Balance | IKS Interventions | RL-Guided Discipline</p>
+    <h1 style='color: #667eea;'>Dopamine Reset + IKS</h1>
+    <p style='color: #b8b8d1;'>Risk Prediction | Triguna Balance | IKS Interventions | RL-Guided Discipline</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -62,22 +74,60 @@ with st.sidebar:
     st.markdown("### 📊 Input Status")
     with st.container():
         st.markdown('<div class="glass" style="padding: 1rem;">', unsafe_allow_html=True)
-        mood = st.slider("🙂 Mood (1-5)", 1, 5, 3)
-        sleep = st.slider("😴 Sleep (hrs)", 0.0, 12.0, 7.0)
-        screen = st.slider("📱 Screen Time (hrs)", 0.0, 12.0, 4.0)
-        addiction = st.selectbox("Addiction", ['social media', 'gaming', 'food', 'smoking'])
-        goal_pct = st.slider("✅ Goal %", 0, 100, 70)
+        mood = st.slider("🙂 Mood (1-5)", 1, 5, 3, key="slider_mood")
+        sleep = st.slider("😴 Sleep (hrs)", 0.0, 12.0, 7.0, key="slider_sleep")
+        screen = st.slider("📱 Screen Time (hrs)", 0.0, 12.0, 4.0, key="slider_screen")
+        addiction = st.selectbox("Addiction", ['social media', 'gaming', 'food', 'smoking'], key="select_addiction")
+        goal_pct = st.slider("✅ Goal %", 0, 100, 70, key="slider_goal")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    if st.button("🔮 Predict & Analyze", use_container_width=True):
+    if st.button("🔮 Predict & Analyze", use_container_width=True, key="predict_btn"):
         input_data = {
             'mood': mood, 'sleep_hours': sleep, 'screen_time': screen,
             'addiction_type': addiction, 'goal_achieved': goal_pct / 100
         }
-        predictions = model.predict(input_data)
+        try:
+            predictions = model.predict(input_data)
+        except Exception as e:
+            st.error(f"Prediction error: {e}. Using fallback.")
+            predictions = {'risk_score': 50.0, 'risk_state': 'medium', 'triguna': {'sattva':33, 'rajas':33, 'tamas':34}}
+        
         st.session_state.predictions = predictions
-        st.session_state.input_data = pd.DataFrame([input_data])
-        st.session_state.input_data['triguna'] = triguna_mapping(st.session_state.input_data)
+        input_df = pd.DataFrame([input_data])
+        try:
+            triguna_result = triguna_mapping(input_df)
+            if isinstance(triguna_result, dict):
+                triguna_dict = triguna_result
+            elif hasattr(triguna_result, 'iloc'):
+                triguna_dict = triguna_result.iloc[0].to_dict() if len(triguna_result) > 0 else {'sattva':33, 'rajas':33, 'tamas':34}
+            else:
+                triguna_dict = {'sattva':33, 'rajas':33, 'tamas':34}
+            input_df['triguna_dict'] = [triguna_dict]
+        except Exception as e:
+            st.warning(f"Triguna calculation failed: {e}. Using defaults.")
+            input_df['triguna_dict'] = [{'sattva':33, 'rajas':33, 'tamas':34}]
+        input_df['date'] = pd.Timestamp.now()
+        input_df['risk_score'] = predictions['risk_score']
+        input_df['risk_state'] = predictions['risk_state']
+        
+        # Safe column addition
+        required_cols = ['date', 'mood', 'sleep_hours', 'screen_time', 'addiction_type', 'goal_achieved', 'risk_score', 'risk_state']
+        for col in required_cols:
+            if col not in input_df.columns:
+                input_df[col] = 0  # or NaN
+        
+        input_df = input_df.assign(
+            triguna_sattva = lambda df: [d.get('sattva', 33) for d in df.triguna_dict],
+            triguna_rajas = lambda df: [d.get('rajas', 33) for d in df.triguna_dict],
+            triguna_tamas = lambda df: [d.get('tamas', 34) for d in df.triguna_dict]
+        ).drop('triguna_dict', axis=1)
+        
+        # Safe append
+        if st.session_state.user_history.empty:
+            st.session_state.user_history = input_df[required_cols + ['triguna_sattva', 'triguna_rajas', 'triguna_tamas']]
+        else:
+            st.session_state.user_history = pd.concat([st.session_state.user_history, input_df], ignore_index=True)
+        st.session_state.input_data = input_df
         st.rerun()
 
     st.markdown("---")
@@ -105,14 +155,22 @@ tab1, tab2, tab3, tab4 = st.tabs(["Risk Analysis", "Triguna", "Interventions", "
 if 'predictions' in st.session_state:
     predictions = st.session_state.predictions
     features_df = st.session_state.input_data
-    triguna = features_df['triguna'].iloc[0] if 'triguna' in features_df.columns else triguna_mapping(features_df)
-    df_hist = model.processor.load_data().tail(100)
+    triguna = { 'sattva': features_df['triguna_sattva'].iloc[0], 'rajas': features_df['triguna_rajas'].iloc[0], 'tamas': features_df['triguna_tamas'].iloc[0] }
+    df_hist = st.session_state.user_history.copy()
+    if df_hist.empty:
+        df_hist = pd.DataFrame({'date': [pd.Timestamp.now()], 'screen_time': [0]})
+    else:
+        df_hist['date'] = pd.to_datetime(df_hist['date'])
 
     with tab1:
         st.markdown("### 🎯 Risk Dashboard")
         col1, col2 = st.columns([3,1])
         with col1:
-            st.plotly_chart(create_gauge_chart(predictions['risk_score'], "Risk Score"), use_container_width=True)
+            try:
+                fig_gauge = create_gauge_chart(predictions['risk_score'], "Risk Score")
+                st.plotly_chart(fig_gauge, use_container_width=True, key="risk_gauge")
+            except Exception as e:
+                st.error(f"Gauge chart error: {e}")
         with col2:
             st.markdown(f'<div class="glass" style="padding:1.5rem;text-align:center;"><h3>{predictions["risk_state"].upper()}</h3><h2 style="color:#667eea;">{predictions["risk_score"]:.0f}</h2></div>', unsafe_allow_html=True)
         
@@ -124,16 +182,40 @@ if 'predictions' in st.session_state:
 
         st.markdown("### 📊 History")
         cols = st.columns(4)
-        with cols[0]: st.plotly_chart(create_line_chart(df_hist, 'screen_time'))
-        with cols[1]: st.plotly_chart(create_heatmap(df_hist))
-        with cols[2]: st.plotly_chart(create_pie_chart(df_hist))
-        with cols[3]: st.plotly_chart(create_line_chart(df_hist, 'craving_level'))
+        with cols[0]: 
+            required_cols = ['date', 'screen_time', 'risk_score', 'addiction_type']
+            safe_hist = df_hist[ [c for c in required_cols if c in df_hist.columns] ].copy() if not df_hist.empty else pd.DataFrame()
+            
+            try:
+                fig_screen = create_line_chart(safe_hist, 'screen_time')
+                st.plotly_chart(fig_screen, use_container_width=True, key="hist_screen")
+            except:
+                st.empty()
+            try:
+                fig_heatmap = create_heatmap(safe_hist)
+                st.plotly_chart(fig_heatmap, use_container_width=True, key="hist_heatmap")
+            except:
+                st.empty()
+            try:
+                fig_pie = create_pie_chart(safe_hist)
+                st.plotly_chart(fig_pie, use_container_width=True, key="hist_pie")
+            except:
+                st.empty()
+            try:
+                fig_risk = create_line_chart(safe_hist, 'risk_score')
+                st.plotly_chart(fig_risk, use_container_width=True, key="hist_risk")
+            except:
+                st.empty()
 
     with tab2:
         st.markdown("### ⚖️ Triguna Balance")
         dominant = predictions.get('triguna_dominant', max(triguna, key=triguna.get))
         st.markdown(f"**Dominant Guna: {dominant.upper()}** | {triguna[dominant]:.0f}%")
-        st.plotly_chart(create_triguna_pie(triguna), use_container_width=True)
+        try:
+            fig_triguna = create_triguna_pie(triguna)
+            st.plotly_chart(fig_triguna, use_container_width=True, key="triguna_pie")
+        except Exception as e:
+            st.error(f"Triguna pie error: {e}")
         
         guna_desc = {
             'sattva': "Purity, harmony, discipline (Gita Ch14)",
@@ -148,7 +230,7 @@ if 'predictions' in st.session_state:
         iks_data = load_iks_interventions()
         state_key = get_state_key(triguna, predictions['risk_score'], features_df['addiction_type'].iloc[0])
         recs = intervention_engine(predictions['risk_state'], triguna, 
-                                  features_df['addiction_type'].iloc[0], st.session_state)
+                                  features_df['addiction_type'].iloc[0], st.session_state, predictions)
         
         for i, rec in enumerate(recs[:3]):
             with st.expander(f"#{i+1} {rec['action']}", expanded=(i==0)):

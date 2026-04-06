@@ -1,3 +1,4 @@
+
 import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
@@ -36,25 +37,42 @@ def create_gauge_chart(score: float, title: str = "Addiction Risk Score") -> go.
     return fig
 
 def create_line_chart(df: pd.DataFrame, col: str) -> go.Figure:
-    """Line chart for usage over time."""
-    fig = px.line(df.tail(30), x='date', y=col, title=f'{col.capitalize()} Over Time', markers=True)
+    """Line chart for usage over time - safe."""
+    if df.empty or col not in df.columns or 'date' not in df.columns:
+        fig = go.Figure()
+        fig.add_annotation(text="No data for chart. Add predictions to see trends.", xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
+        fig.update_layout(template='plotly_dark', height=350, title=f'{col.capitalize()} Trend')
+        return fig
+    df_plot = df.tail(30).copy()
+    df_plot['date'] = pd.to_datetime(df_plot['date'])
+    fig = px.line(df_plot, x='date', y=col, title=f'{col.capitalize()} Over Time', markers=True)
     fig.update_layout(template='plotly_dark', height=350)
     fig.update_traces(line_color='#636EFA')
     return fig
 
 def create_heatmap(df: pd.DataFrame) -> go.Figure:
-    """Heatmap for craving patterns by hour/day."""
+    """Heatmap for craving patterns by hour/day - safe."""
+    if df.empty or 'date' not in df.columns or 'risk_score' not in df.columns:
+        fig = go.Figure()
+        fig.add_annotation(text="More data needed for heatmap (3+ days).", xref="paper", yref="paper")
+        fig.update_layout(template='plotly_dark', height=350, title='Craving Heatmap')
+        return fig
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
     df['hour'] = df['date'].dt.hour
     df['day'] = df['date'].dt.day_name()
-    pivot = df.pivot_table(index='day', columns='hour', values='craving_level', aggfunc='mean')
-    fig = px.imshow(pivot, title='Craving Heatmap (Hour vs Day)', color_continuous_scale='RdYlGn_r')
+    pivot = df.pivot_table(index='day', columns='hour', values='risk_score', aggfunc='mean')
+    fig = px.imshow(pivot.fillna(0), title='Risk Heatmap (Hour vs Day)', color_continuous_scale='RdYlGn_r')
     fig.update_layout(template='plotly_dark', height=350)
     return fig
 
 def create_pie_chart(df: pd.DataFrame) -> go.Figure:
-    """Pie chart for addiction type distribution."""
+    """Pie chart for addiction type distribution - safe."""
+    if df.empty or 'addiction_type' not in df.columns:
+        fig = go.Figure()
+        fig.add_annotation(text="Log more entries to see distribution.", xref="paper", yref="paper")
+        fig.update_layout(template='plotly_dark', height=350, title='Addiction Types')
+        return fig
     type_counts = df['addiction_type'].value_counts()
     fig = px.pie(values=type_counts.values, names=type_counts.index, title='Addiction Type Distribution')
     fig.update_layout(template='plotly_dark', height=350)
@@ -135,29 +153,44 @@ def rl_update_q(state_key: str, action_idx: int, reward: float, next_interventio
     new_q = current_q + lr * (reward + gamma * next_max_q - current_q)
     q_table[state_key][action_idx] = new_q
 
-def triguna_mapping(features: pd.DataFrame) -> Dict[str, float]:
-    """Enhanced Triguna mapping (features for ML compatibility)."""
-    mood = features['mood'].iloc[0]
-    sleep = features['sleep_hours'].iloc[0]
-    screen = features['screen_time'].iloc[0]
-    goal = features['goal_achieved'].iloc[0]
+def triguna_mapping(features: pd.DataFrame) -> list[dict]:
+    """Enhanced Triguna mapping - safe for DataFrame input, returns list of dicts for row-wise."""
+    if features.empty:
+        return [{'sattva': 33.3, 'rajas': 33.3, 'tamas': 33.4}]
     
-    # Refined rules
-    sattva_score = (mood / 5 * sleep / 8 * goal) * 100
-    tamas_score = ((5 - mood) / 5 * screen / 8 * (1 - goal)) * 100
-    total = sattva_score + tamas_score
-    rajas_score = 100 - total if total < 100 else 0
+    result = []
+    for idx in range(len(features)):
+        row = features.iloc[idx]
+        try:
+            mood = row.get('mood', 3.0)
+            sleep = row.get('sleep_hours', 7.0)
+            screen = row.get('screen_time', 4.0)
+            goal = row.get('goal_achieved', 0.7)
+            
+            sattva_score = (mood / 5 * sleep / 8 * goal) * 100
+            tamas_score = ((5 - mood) / 5 * screen / 8 * (1 - goal)) * 100
+            rajas_score = 50.0
+            total = sattva_score + tamas_score + rajas_score
+            if total > 0:
+                sattva_score = (sattva_score / total) * 100
+                rajas_score = (rajas_score / total) * 100
+                tamas_score = (tamas_score / total) * 100
+            
+            result.append({'sattva': sattva_score, 'rajas': rajas_score, 'tamas': tamas_score})
+        except Exception:
+            result.append({'sattva': 33.3, 'rajas': 33.3, 'tamas': 33.4})
     
-    return {'sattva': sattva_score, 'rajas': rajas_score, 'tamas': tamas_score}
+    return result
 
 def intervention_engine(risk_state: str, triguna: Dict[str, float], addiction_type: str, 
-                       session_state: Any, iks_data: Dict = None) -> List[Dict]:
+                       session_state: Any, predictions=None, iks_data: Dict = None) -> List[Dict]:
     """Dynamic IKS interventions with RL."""
     if iks_data is None:
         iks_data = load_iks_interventions()
     
     dominant_guna = max(triguna, key=triguna.get)
-    state_key = get_state_key(triguna, predictions.get('risk_score', 50), addiction_type)  # Assume predictions avail
+    risk_score = predictions['risk_score'] if predictions else 50
+    state_key = get_state_key(triguna, risk_score, addiction_type)
     
     interventions = iks_data.get(addiction_type, {}).get(dominant_guna, [])
     
@@ -199,6 +232,7 @@ def iks_chatbot_response(query: str, triguna: Dict, addiction_type: str, session
     """Advanced IKS chatbot (sim + OpenAI stub)."""
     dominant = max(triguna, key=triguna.get).upper()
     
+    import random
     prompts = [
         f"Craving {addiction_type}? Dominant Guna: {dominant}. Gita 2.56: Steady wisdom amid disturbance. Try Nadi Shodhana pranayama.",
         f"Gita Ch6 self-control for {addiction_type}. Practice: Ujjayi breath. You master the mind (6.36).",
@@ -222,7 +256,8 @@ def init_iks_session_state():
         'intervention_history': [],
         'rl_q_table': config.RL_Q_TABLE.copy(),
         'chat_messages': [],
-        'discipline_score': 0
+        'discipline_score': 0,
+        'user_history': pd.DataFrame(columns=['date', 'mood', 'sleep_hours', 'screen_time', 'addiction_type', 'goal_achieved', 'risk_score', 'risk_state', 'triguna_sattva', 'triguna_rajas', 'triguna_tamas'])
     }
     for key, value in defaults.items():
         if key not in st.session_state:
