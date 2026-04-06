@@ -1,8 +1,12 @@
 # 🧠 Dopamine Reset + IKS: Production ML App for Addiction Recovery
 
-project for iks, indian knowlegde systems by me to integrate iks and ds
+**project for iks, indian knowlegde systems by me to integrate iks and ds**
 
-[![Streamlit App](https://img.shields.io/badge/Live_Demo-FF6B6B?style=for-the-badge&logo=streamlit&logoColor=white)](http://localhost:8501/?embed=true)
+live link -- https://iks-ds.streamlit.app/
+
+---
+
+[![Streamlit App](https://img.shields.io/badge/Live_Demo-FF6B6B?style=for-the-badge&logo=streamlit&logoColor=white)](https://iks-ds.streamlit.app/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Streamlit-F63366?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
