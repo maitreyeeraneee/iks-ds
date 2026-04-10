@@ -48,7 +48,7 @@ def load_or_train_model(_user_history_hash: str = None):
     if len(st.session_state.user_history) >= 5:
         trainer = ModelTrainer()
         trainer.train(st.session_state.user_history)
-        st.success("✅ ML Model trained on your history!")
+        st.success("✅")
         return trainer
     else:
         # Rule-based fallback (improved)
@@ -82,13 +82,10 @@ st.markdown("""
 # Sidebar
 with st.sidebar:
     st.markdown("### 📊 Input Status")
-    col1, col2 = st.columns(2)
-    with col1:
-        mood = st.slider("🙂 Mood (1-5)", 1, 5, 3, key="slider_mood")
-        sleep = st.number_input("😴 Sleep (hrs)", min_value=0.0, max_value=16.0, value=7.0, step=1.0, key="slider_sleep")
-    with col2:
-        screen = st.number_input("📱 Screen Time (hrs)", min_value=0.0, max_value=16.0, value=4.0, step=1.0, key="slider_screen")
-        goal_pct = st.slider("✅ Goal %", 0, 100, 70, key="slider_goal")
+    mood = st.slider("🙂 Mood (1-5)", 1, 5, 3, key="slider_mood")
+    sleep = st.number_input("😴 Sleep (hrs)", min_value=0.0, max_value=16.0, value=7.0, step=1.0, key="slider_sleep")
+    screen = st.number_input("📱 Screen Time (hrs)", min_value=0.0, max_value=16.0, value=4.0, step=1.0, key="slider_screen")
+    goal_pct = st.slider("✅ Goal %", 0, 100, 70, key="slider_goal")
     addiction = st.selectbox("Addiction", ['social media', 'gaming', 'food', 'smoking'], key="select_addiction")
 
     if st.button("🔮 Predict & Analyze", use_container_width=True, key="predict_btn"):
