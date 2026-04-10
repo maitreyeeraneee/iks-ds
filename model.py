@@ -7,11 +7,11 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-import shap
+# import shap  # Optional, install if needed
 import joblib
 from typing import Dict, Any, Tuple
-import streamlit as st
-from utils import get_triguna_percentages
+
+
 
 class DataProcessor:
     def __init__(self):
@@ -60,7 +60,6 @@ class ModelTrainer:
         self.regressor = None
         self.triguna_classifier = None
         self.preprocessor = None
-        self.explainer = None
         self.triguna_le = None
         
     def auto_detect_features(self, X: pd.DataFrame):
@@ -113,7 +112,7 @@ class ModelTrainer:
         self.triguna_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
         self.triguna_classifier.fit(X_processed, y_triguna_encoded)
         
-        self.explainer = shap.TreeExplainer(self.regressor)
+        # self.explainer = shap.TreeExplainer(self.regressor)  # Requires shap
         
         joblib.dump(self, 'model_trained.joblib')
         st.success("✅ Model trained successfully: Risk + Triguna ML!")
@@ -139,7 +138,22 @@ class ModelTrainer:
             triguna_pred_idx = self.triguna_classifier.predict(X_proc)[0]
             triguna_dominant = self.triguna_le.inverse_transform([triguna_pred_idx])[0]
             
-            triguna_probs = get_triguna_percentages(df_input)
+            def get_triguna_pct(features):
+                mood = features.get('mood', 3.0)
+                sleep = features.get('sleep_hours', 7.0)
+                screen = features.get('screen_time', 4.0)
+                goal = features.get('goal_achieved', 0.7)
+                sattva_raw = mood / 5 * sleep / 8 * goal
+                tamas_raw = (5 - mood) / 5 * screen / 8 * (1 - goal)
+                rajas_raw = 1 - sattva_raw - tamas_raw
+                rajas_raw = max(0, rajas_raw)
+                total_raw = sattva_raw + rajas_raw + tamas_raw or 1
+                sattva = round((sattva_raw / total_raw) * 100, 2)
+                rajas = round((rajas_raw / total_raw) * 100, 2)
+                tamas = round(100 - sattva - rajas, 2)
+                return {'sattva': sattva, 'rajas': rajas, 'tamas': tamas}
+
+            triguna_probs = get_triguna_pct(input_data)
             triguna_probs['dominant'] = triguna_dominant
             
             risk_state = 'high' if risk_score > 70 else 'medium' if risk_score > 40 else 'low'

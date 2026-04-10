@@ -7,8 +7,8 @@ import numpy as np
 import json
 from config import config
 from typing import Dict, Any, List
-import gymnasium as gym
-from gymnasium import spaces
+# import gymnasium as gym  # Optional for advanced RL
+# from gymnasium import spaces
 
 def create_gauge_chart(score: float, title: str = "Addiction Risk Score") -> go.Figure:
     """Create interactive gauge chart for risk score."""
@@ -85,16 +85,22 @@ def create_triguna_pie(triguna: Dict[str, float]) -> go.Figure:
     fig.update_layout(template='plotly_dark', height=350)
     return fig
 
-def generate_insights(predictions: Dict[str, Any], features: pd.DataFrame) -> list:
+def generate_insights(predictions: Dict[str, Any], features: pd.DataFrame, triguna: Dict = None) -> list:
     """Generate textual insights from predictions."""
     score = predictions['risk_score']
     state = predictions['risk_state']
-    triguna = predictions.get('triguna', {})
+    triguna = triguna or predictions.get('triguna', {})
     insights = [f"Risk: {state.upper()} ({score:.1f}/100)"]
     
     if triguna:
         dominant = max(triguna, key=triguna.get)
-        insights.append(f"dominant Guna: {dominant.upper()} ({triguna[dominant]:.0f}%)")
+        insights.append(f"Dominant Guna: {dominant.upper()} ({triguna[dominant]:.0f}%)")
+        if dominant == 'sattva':
+            insights.append("Excellent! Sattva supports recovery. Maintain purity & discipline.")
+        elif dominant == 'rajas':
+            insights.append("Balanced Rajas - channel energy productively, avoid over-stimulation.")
+        else:
+            insights.append("High Tamas - practice grounding: walk, pranayama, reduce screen.")
     
     screen = features['screen_time'].iloc[0]
     sleep = features['sleep_hours'].iloc[0]
@@ -109,7 +115,7 @@ def simulate_alert(risk_score: float, session_state: Any):
         session_state.alert_active = True
         with st.container():
             st.error("🚨 HIGH RISK! Practice IKS intervention now.")
-            if st.button("Reset Alert", width='stretch', key="reset_alert_btn"):
+            if st.button("Reset Alert", use_container_width=True, key="reset_alert_btn"):
                 session_state.alert_active = False
                 st.rerun()
     elif risk_score <= 70:
