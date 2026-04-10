@@ -14,7 +14,7 @@ import json
 
 # Page config
 st.set_page_config(
-    page_title="Dopamine Reset + IKS",
+    page_title="Dopamine Reset",
     page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -39,28 +39,38 @@ init_iks_session_state()
 # Dynamic user history DF - moved to init_iks_session_state if needed
 
 # Model load/train
+from model import ModelTrainer
+import os
+
 @st.cache_resource
-def load_model():
-    try:
-        model = joblib.load('model_trained.joblib')
-        return model
-    except:
-        pass  # Silent fallback
-        class RuleBasedModel:
+def load_or_train_model(_user_history_hash: str = None):
+    # Train if enough history
+    if len(st.session_state.user_history) >= 5:
+        trainer = ModelTrainer()
+        trainer.train(st.session_state.user_history)
+        st.success("✅ ML Model trained on your history!")
+        return trainer
+    else:
+        # Rule-based fallback (improved)
+        class ImprovedRuleBasedModel:
             def __init__(self):
                 pass
             def predict(self, input_data):
-                import numpy as np
-                from utils import get_triguna_percentages as triguna_mapping
-                triguna_dict = triguna_mapping(pd.DataFrame([input_data]))[0]
-                risk_score = 50 + (input_data['screen_time'] * 5) - (input_data['sleep_hours'] * 3) + np.random.normal(0,5)
-                risk_score = np.clip(risk_score, 0, 100)
+                from utils import get_triguna_percentages
+                triguna_dict = get_triguna_percentages(pd.DataFrame([input_data]))
+                # Dynamic formula using ALL inputs
+                screen = input_data.get('screen_time', 4.0)
+                sleep = input_data.get('sleep_hours', 7.0)
+                mood = input_data.get('mood', 3.0)
+                goal = input_data.get('goal_achieved', 0.7)
+                risk_score = 30 + (screen * 8) - (sleep * 4) - (mood * 3) + ((1-goal)*20)
+                risk_score = max(0, min(100, risk_score))
                 risk_state = 'high' if risk_score > 70 else 'medium' if risk_score > 40 else 'low'
-                return {'risk_score': risk_score, 'risk_state': risk_state, 'triguna': triguna_dict}
-        model = RuleBasedModel()
-        return model
+                return {'risk_score': risk_score, 'risk_state': risk_state, 'triguna': triguna_dict[0] if isinstance(triguna_dict, list) else triguna_dict}
+        return ImprovedRuleBasedModel()
 
-model = load_model()
+# Initial load
+model = load_or_train_model()
 
 st.markdown("""
 <div class='glass' style='padding: 2rem; margin: 1rem; text-align: center;'>
@@ -72,55 +82,67 @@ st.markdown("""
 # Sidebar
 with st.sidebar:
     st.markdown("### 📊 Input Status")
-    with st.container():
-        st.markdown('<div class="glass" style="padding: 1rem;">', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
         mood = st.slider("🙂 Mood (1-5)", 1, 5, 3, key="slider_mood")
-        sleep = st.number_input("😴 Sleep (hrs)", min_value=0.0, max_value=12.0, value=7.0, step=0.1, key="slider_sleep")
-        screen = st.number_input("📱 Screen Time (hrs)", min_value=0.0, max_value=12.0, value=4.0, step=0.1, key="slider_screen")
-        addiction = st.selectbox("Addiction", ['social media', 'gaming', 'food', 'smoking'], key="select_addiction")
+        sleep = st.number_input("😴 Sleep (hrs)", min_value=0.0, max_value=16.0, value=7.0, step=1.0, key="slider_sleep")
+    with col2:
+        screen = st.number_input("📱 Screen Time (hrs)", min_value=0.0, max_value=16.0, value=4.0, step=1.0, key="slider_screen")
         goal_pct = st.slider("✅ Goal %", 0, 100, 70, key="slider_goal")
-        st.markdown('</div>', unsafe_allow_html=True)
+    addiction = st.selectbox("Addiction", ['social media', 'gaming', 'food', 'smoking'], key="select_addiction")
 
     if st.button("🔮 Predict & Analyze", use_container_width=True, key="predict_btn"):
+        # Input validation
         input_data = {
-            'mood': mood, 'sleep_hours': sleep, 'screen_time': screen,
-            'addiction_type': addiction, 'goal_achieved': goal_pct / 100
+            'mood': max(1, min(5, float(mood))),
+            'sleep_hours': max(0.1, min(12.0, float(sleep))),
+            'screen_time': max(0.0, float(screen)),
+            'addiction_type': addiction,
+            'goal_achieved': goal_pct / 100.0
         }
+        
+        # Prepare full feature df for model (match model.py expected cols)
+        input_df = pd.DataFrame([input_data])
+        input_df['date'] = pd.Timestamp.now()
+        input_df['hour'] = input_df['date'].dt.hour
+        input_df['is_weekend'] = input_df['date'].dt.weekday >= 5
+        input_df['screen_sleep_ratio'] = input_df['screen_time'] / (input_df['sleep_hours'] + 1e-6)
+        input_df = input_df.fillna(0)
+        
+        # Predict with proper input
         try:
-            predictions = model.predict(input_data)
+            predictions = model.predict(input_data)  # dict for compatibility
+            st.success("✅ Prediction successful!")
         except Exception as e:
             st.error(f"Prediction error: {e}. Using fallback.")
             predictions = {'risk_score': 50.0, 'risk_state': 'medium', 'triguna': {'sattva':33, 'rajas':33, 'tamas':34}}
         
-        st.session_state.predictions = predictions
-        input_df = pd.DataFrame([input_data])
-        # Single triguna source
+        # Triguna
         triguna_pct = get_triguna_percentages(input_df)
-        st.session_state.triguna_pct = triguna_pct
+        predictions['triguna'] = triguna_pct
         
-        input_df['date'] = pd.Timestamp.now()
+        st.session_state.predictions = predictions
+        st.session_state.input_data = input_df
+        
+        # Update risk in df and append to history
         input_df['risk_score'] = predictions['risk_score']
         input_df['risk_state'] = predictions['risk_state']
+        input_df['triguna_sattva'] = triguna_pct['sattva']
+        input_df['triguna_rajas'] = triguna_pct['rajas']
+        input_df['triguna_tamas'] = triguna_pct['tamas']
         
-        # Safe column addition
-        required_cols = ['date', 'mood', 'sleep_hours', 'screen_time', 'addiction_type', 'goal_achieved', 'risk_score', 'risk_state']
-        for col in required_cols:
-            if col not in input_df.columns:
-                input_df[col] = 0
-        
-        # Store columns from single source
-        input_df = input_df.assign(
-            triguna_sattva = triguna_pct['sattva'],
-            triguna_rajas = triguna_pct['rajas'],
-            triguna_tamas = triguna_pct['tamas']
-        )
-        
-        # Safe append
+        # Append to history
         if st.session_state.user_history.empty:
-            st.session_state.user_history = input_df[required_cols + ['triguna_sattva', 'triguna_rajas', 'triguna_tamas']]
+            st.session_state.user_history = input_df
         else:
             st.session_state.user_history = pd.concat([st.session_state.user_history, input_df], ignore_index=True)
-        st.session_state.input_data = input_df
+        
+        # Retrain model if enough data
+        if len(st.session_state.user_history) >= 5:
+            st.cache_resource.clear()
+            model = load_or_train_model(hash(st.session_state.user_history.to_json()))
+        
+        st.session_state.triguna_pct = triguna_pct
         st.rerun()
 
     st.markdown("---")
@@ -158,11 +180,15 @@ if 'predictions' in st.session_state:
             st.plotly_chart(fig_gauge, use_container_width=True, height=250, key="risk_gauge")
         except Exception as e:
             st.error(f"Gauge chart error: {e}")
-        col1, col2 = st.columns([1,2])
+        col1, col2, col3 = st.columns([2, 3, 2])
         with col1:
-            st.metric(predictions["risk_state"].upper(), f"{predictions["risk_score"]:.0f}/100")
-        dominant_guna = max(triguna, key=triguna.get).upper()
-        st.info(f"**Dominant Guna:** {dominant_guna}")
+            st.metric("Risk Score", f"{predictions['risk_score']:.0f}/100", delta=None)
+        with col2:
+            progress = predictions['risk_score'] / 100
+            st.progress(progress)
+        with col3:
+            dominant_guna = max(triguna, key=triguna.get).upper()
+            st.info(f"**{dominant_guna}**")
         
         st.markdown("**Insights:**")
         for insight in generate_insights(predictions, features_df, triguna):
