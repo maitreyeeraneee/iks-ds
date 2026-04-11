@@ -153,7 +153,7 @@ with st.sidebar:
         st.metric("Score", f"{score:.0f}/100", delta=5)
     
     if st.session_state.intervention_history:
-        st.dataframe(pd.DataFrame(st.session_state.intervention_history[-5:]), width='stretch')
+        st.dataframe(pd.DataFrame(st.session_state.intervention_history[-5:]), use_container_width=True)
 
     st.markdown("---")
 
@@ -201,25 +201,25 @@ if 'predictions' in st.session_state:
         try:
             fig_screen = create_line_chart(safe_hist, 'screen_time')
             with chart_cols[0]:
-                st.plotly_chart(fig_screen, width='stretch', key="hist_screen")
+                st.plotly_chart(fig_screen, use_container_width=True, key="hist_screen")
         except:
             pass
         try:
             fig_heatmap = create_heatmap(safe_hist)
             with chart_cols[1]:
-                st.plotly_chart(fig_heatmap, width='stretch', key="hist_heatmap")
+                st.plotly_chart(fig_heatmap, use_container_width=True, key="hist_heatmap")
         except:
             pass
         try:
             fig_pie = create_pie_chart(safe_hist)
             with chart_cols[2]:
-                st.plotly_chart(fig_pie, width='stretch', key="hist_pie")
+                st.plotly_chart(fig_pie, use_container_width=True, key="hist_pie")
         except:
             pass
         try:
             fig_risk = create_line_chart(safe_hist, 'risk_score')
             with chart_cols[3]:
-                st.plotly_chart(fig_risk, width='stretch', key="hist_risk")
+                st.plotly_chart(fig_risk, use_container_width=True, key="hist_risk")
         except:
             pass
 
@@ -236,7 +236,7 @@ if 'predictions' in st.session_state:
         st.markdown(f"**Dominant: {dominant.upper()}** ({triguna[dominant]:.1f}%)")
         try:
             fig_triguna = create_triguna_pie(triguna)
-            st.plotly_chart(fig_triguna, width='stretch', key="triguna_pie")
+            st.plotly_chart(fig_triguna, use_container_width=True, key="triguna_pie")
         except Exception as e:
             st.error(f"Triguna pie error: {e}")
         
