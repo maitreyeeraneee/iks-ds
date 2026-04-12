@@ -75,7 +75,7 @@ model = load_or_train_model()
 st.markdown("""
 <div class='glass' style='padding: 2rem; margin: 1rem; text-align: center;'>
     <h1 style='color: #667eea;'>Dopamine Reset + IKS</h1>
-    <p style='color: #b8b8d1;'>Risk Prediction | Triguna Balance | IKS Interventions | RL-Guided Discipline</p>
+    <p style='color: #b8b8d1;'>Risk Prediction • Triguna Balance • IKS Interventions • Discipline Tracker</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -157,8 +157,160 @@ with st.sidebar:
 
     st.markdown("---")
 
+def meditation_tab():
+    """Enhanced Guided Meditation with second-wise timer."""
+    import time  # For tick logic
+
+    # Init session state
+    defaults = {
+        'meditation_type': 'Breathing Meditation',
+        'duration_min': 5,  # minutes
+        'total_seconds': 300,  # default 5 min
+        'timer_start': None,
+        'timer_paused': False,
+        'elapsed_seconds': 0,
+        'remaining_seconds': 300,
+        'brain_dump': [],
+        'session_complete': False,
+        'last_update': 0
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    # Update total_seconds on duration change
+    new_total = st.session_state.duration_min * 60
+    if new_total != st.session_state.total_seconds:
+        st.session_state.total_seconds = new_total
+        st.session_state.remaining_seconds = new_total
+        st.session_state.session_complete = False
+
+    st.markdown('<div class="glass" style="padding: 2rem; text-align: center;">', unsafe_allow_html=True)
+    st.markdown("### Guided Meditation")
+    st.markdown("**Find inner calm amid the storm. One breath at a time.**")
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("---")
+
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        st.markdown("#### 🕐 Session")
+        med_type = st.selectbox(
+            "Meditation Type",
+            ["Focus Meditation", "Breathing Meditation", "IKS-based Meditation", "Quick Reset (2 min)"],
+            key="med_type_select"
+        )
+        instructions = {
+            "Focus Meditation": "Close eyes. Pick one object/mantra. Return gently when mind wanders.",
+            "Breathing Meditation": "4-7-8 breath: Inhale 4s, hold 7s, exhale 8s. Feel the rhythm.",
+            "IKS-based Meditation": "Gita Ch6: Steady the mind. Cultivate Sattva. Witness thoughts without attachment.",
+            "Quick Reset (2 min)": "Scan body top-down. Release tension. Center yourself."
+        }
+        st.markdown(f"**📜 Instructions:** {instructions[med_type]}")
+
+        duration_min = st.slider("Duration (minutes)", 1, 20, st.session_state.duration_min, key="med_duration")
+        st.session_state.duration_min = duration_min
+
+        col_btn1, col_btn2, col_btn3 = st.columns(3)
+        with col_btn1:
+            if st.button("▶️ Start", use_container_width=True, key="start_med"):
+                st.session_state.timer_start = pd.Timestamp.now()
+                st.session_state.timer_paused = False
+                st.session_state.session_complete = False
+                st.session_state.elapsed_seconds = 0
+                st.session_state.remaining_seconds = st.session_state.total_seconds
+        with col_btn2:
+            if st.button("⏸️ Pause", use_container_width=True, key="pause_med"):
+                st.session_state.timer_paused = not st.session_state.timer_paused
+        with col_btn3:
+            if st.button("🔄 Reset", use_container_width=True, key="reset_med"):
+                st.session_state.timer_start = None
+                st.session_state.timer_paused = False
+                st.session_state.elapsed_seconds = 0
+                st.session_state.remaining_seconds = st.session_state.total_seconds
+                st.session_state.session_complete = False
+
+    with col2:
+        st.markdown("#### ⏱️ Live Timer")
+
+        timer_placeholder = st.empty()
+        progress_placeholder = st.empty()
+        message_placeholder = st.empty()
+
+        if st.session_state.timer_start and not st.session_state.session_complete:
+            current_time = pd.Timestamp.now()
+            elapsed_seconds = int((current_time - st.session_state.timer_start).total_seconds())
+            
+            if st.session_state.timer_paused:
+                elapsed_seconds = st.session_state.elapsed_seconds
+            else:
+                st.session_state.elapsed_seconds = elapsed_seconds
+            
+            remaining_seconds = max(0, st.session_state.total_seconds - elapsed_seconds)
+            st.session_state.remaining_seconds = remaining_seconds
+            progress_pct = 1 - (remaining_seconds / st.session_state.total_seconds)
+
+            # MM:SS format
+            mins = int(remaining_seconds // 60)
+            secs = int(remaining_seconds % 60)
+            timer_display = f"{mins:02d}:{secs:02d}"
+
+            with timer_placeholder.container():
+                st.markdown(f"""
+                <div style='text-align: center; padding: 2rem;'>
+                    <h1 style='color: #4ade80; font-size: 4rem; margin: 0; text-shadow: 0 0 20px rgba(74, 222, 128, 0.5);'>
+                        {timer_display}
+                    </h1>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with progress_placeholder.container():
+                st.progress(progress_pct)
+            
+            if remaining_seconds <= 0:
+                st.session_state.session_complete = True
+                with timer_placeholder.container():
+                    st.markdown("### ✅ **Complete!**")
+                with message_placeholder.container():
+                    st.success("Session complete. Discipline strengthened 🔥")
+                    st.balloons()
+            else:
+                st.markdown("### 🕐 Ready to begin")
+
+    st.markdown("---")
+
+    # Brain Dump
+    st.markdown("#### 🧠 Brain Dump (Capture intrusive thoughts)")
+    brain_text = st.text_area("Type thoughts/distractions here...", key="brain_input", height=100)
+    if st.button("💾 Save for Later", use_container_width=True, key="save_brain"):
+        if brain_text.strip():
+            st.session_state.brain_dump.append({
+                "time": pd.Timestamp.now().strftime("%H:%M"),
+                "thought": brain_text.strip()
+            })
+            st.success("Saved! Return after meditation.")
+            # Clear input
+            st.session_state._brain_input = ""
+
+    if st.session_state.brain_dump:
+        st.markdown("**Saved Thoughts:**")
+        for item in st.session_state.brain_dump[-5:]:
+            with st.expander(f"{item['time']} • {item['thought'][:50]}..."):
+                st.write(item['thought'])
+
+    st.markdown("---")
+    st.markdown("*Breathe. Observe. Let go.* 🙏")
+
+    # Auto-rerun every ~1s during timer (non-blocking)
+    if (st.session_state.timer_start and not st.session_state.timer_paused and 
+        not st.session_state.session_complete and 
+        (time.time() - st.session_state.last_update) > 0.8):
+        st.session_state.last_update = time.time()
+        time.sleep(0.1)
+        st.rerun()
+
 # Main tabs
-tab1, tab2, tab3, tab4 = st.tabs(["Risk Analysis", "Triguna", "Interventions", "Chat & Progress"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Risk Analysis", "Triguna", "Interventions", "Chat & Progress", " Guided Meditation"])
 
 if 'predictions' in st.session_state:
     predictions = st.session_state.predictions
@@ -293,6 +445,9 @@ if 'predictions' in st.session_state:
         for msg in st.session_state.chat_messages[-10:]:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
+
+    with tab5:
+        meditation_tab()
 
 else:
     st.info("👈 Sidebar: Enter data → Predict & Analyze")

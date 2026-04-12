@@ -1,70 +1,50 @@
-# 🧠 Dopamine Reset + IKS 
-## -> Production ML App for Addiction Recovery
+# Dopamine Reset + IKS
+Production ML App for Addiction Recovery using Indian Knowledge Systems
 
-**project for iks, indian knowlegde systems by me to integrate iks and ds**
+[![Streamlit App](https://img.shields.io/badge/Live_Demo-orange?style=for-the-badge&logo=streamlit&logoColor=white)](https://iks-ds.streamlit.app/)
 
-live link -- https://iks-ds.streamlit.app/
+## Overview
+Advanced Streamlit ML app combining Ayurveda Triguna analysis, Bhagavad Gita interventions, and reinforcement learning for addiction recovery.
 
----
+**Key Features:**
+- Risk prediction dashboards
+- Triguna (Sattva/Rajas/Tamas) balance
+- Personalized IKS interventions
+- Real-time meditation timer
+- RL-optimized recommendations
 
-[![Streamlit App](https://img.shields.io/badge/Live_Demo-FF6B6B?style=for-the-badge&logo=streamlit&logoColor=white)](https://iks-ds.streamlit.app/)
-[![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Streamlit](https://img.shields.io/badge/Streamlit-F63366?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
-[![GitHub stars](https://img.shields.io/badge/⭐-Star_Me-6f42c1?style=for-the-badge&logo=github)](https://github.com)
+## Tech Stack
+- Frontend: Streamlit, Plotly, Custom CSS (glassmorphism)
+- ML: scikit-learn (Random Forest), joblib
+- Data: Pandas, JSON interventions
+- Deployment: Streamlit Cloud ready
 
-## 🎯 **What is this?**
-**Advanced Streamlit ML app combining:**
-- **Ayurveda Triguna ML** (Sattva/Rajas/Tamas prediction)
-- **Bhagavad Gita IKS Interventions** (personalized verses + Yoga)
-- **Reinforcement Learning** (optimizes interventions)
-- **Real-time Risk Dashboards** (RF + SHAP)
-
-**key:** Production-ready Python/Streamlit/ML code showcasing end-to-end ML, UI/UX, scalable architecture.
-
-## 🔥 **Demo Features**
-| Feature | Tech Stack | Impact |
-|---------|------------|--------|
-| **Risk Prediction** | RandomForest + SHAP | 95% accuracy on screen addiction |
-| **Triguna Balance** | ML mapping from mood/sleep | Personalized Guna insights |
-| **RL Interventions** | Q-Learning | Learns best Gita verse per state |
-| **IKS Chatbot** | Rule + OpenAI-ready | Motivational guidance |
-| **Glassmorphism UI** | Custom CSS + Plotly | Recruiter-impressing design |
-
-## 🚀 **1-Click Deploy**
+## Quick Start
 ```bash
-git clone <repo>
-cd iks-ds
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-
-## 🏗️ **Tech Stack**
+## Structure
 ```
-Frontend: Streamlit + Plotly + Custom CSS (Glassmorphism)
-ML: scikit-learn (RF Regressor/Classifier), SHAP, joblib
-RL: Custom Q-Learning (Gymnasium-inspired)
-Data: Pandas, JSON (IKS interventions)
-Deployment: Production-ready, Docker-ready
+├── app.py           # Main Streamlit app
+├── model.py         # ML model trainer
+├── utils.py         # Charts, RL, IKS logic
+├── config.py        # Configuration
+├── data/            # IKS interventions JSON
+├── requirements.txt # Dependencies
+├── runtime.txt      # Python 3.10
+└── README.md
 ```
 
-## 📈 **ML Performance**
-| Metric | Value |
-|--------|-------|
-| Risk Prediction AUC | 0.92 |
-| Triguna Accuracy | 87% |
-| Intervention Success | +23% streak uplift |
+## ML Models
+- Random Forest Regressor/Classifier for risk + triguna
+- Q-Learning for intervention optimization
+- Rule-based fallback for <5 data points
 
-## 🎖️ **Highlights**
-- **Full-Stack ML Engineer**: Model → Production UI → Deployment
-- **Advanced UI**: Glassmorphism, responsive, interactive dashboards
-- **Domain Innovation**: Ayurveda/ML fusion (IKS research)
-- **Scalable Code**: Modular, error-handled, session-persistent
-- **Production Ready**: Virtualenv, requirements, caching (@st.cache)
+Production-ready with caching, error handling, and session persistence.
 
-## 🤝 **Contribute**
-Issues/PRs welcome! Star if useful for your portfolio 
+---
 
-**built with ❤️ by maitreyee - just another student trying to learn data science lol**
+Made with Streamlit by Maitreyee
 
