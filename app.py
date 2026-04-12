@@ -72,6 +72,42 @@ def load_or_train_model(_user_history_hash: str = None):
 # Initial load
 model = load_or_train_model()
 
+def dynamic_addiction_inputs():
+    """Dynamic addiction inputs based on selection - Smoking, Alcohol, Social Media, Junk Food."""
+    if 'addiction_type' not in st.session_state:
+        st.session_state.addiction_type = 'Social Media'
+    if 'addiction_metric' not in st.session_state:
+        st.session_state.addiction_metric = {}
+    
+    addiction_options = ['Smoking', 'Alcohol', 'Social Media', 'Junk Food']
+    
+    selected = st.selectbox(
+        "Select Addiction",
+        options=addiction_options,
+        index=addiction_options.index(st.session_state.addiction_type),
+        key="addiction_dropdown"
+    )
+    
+    if selected != st.session_state.addiction_type:
+        st.session_state.addiction_type = selected
+        st.session_state.addiction_metric = {}
+        st.rerun()
+    
+    st.session_state.addiction_type = selected
+    
+    if selected == 'Smoking':
+        cigarettes = st.number_input("Cigarettes per day", min_value=0.0, value=5.0, step=1.0, key="cigs")
+        st.session_state.addiction_metric['cigarettes_per_day'] = cigarettes
+    elif selected == 'Alcohol':
+        drinks = st.number_input("Drinks per day", min_value=0.0, value=2.0, step=0.5, key="drinks")
+        st.session_state.addiction_metric['drinks_per_day'] = drinks
+    elif selected == 'Social Media':
+        screen_time = st.number_input("Screen time (hours)", min_value=0.0, max_value=24.0, value=4.0, step=0.5, key="add_screen")
+        st.session_state.addiction_metric['screen_time_hours'] = screen_time
+    elif selected == 'Junk Food':
+        frequency = st.number_input("Frequency per day", min_value=0.0, value=3.0, step=1.0, key="food_freq")
+        st.session_state.addiction_metric['junk_food_frequency_per_day'] = frequency
+
 st.markdown("""
 <div class='glass' style='padding: 2rem; margin: 1rem; text-align: center;'>
     <h1 style='color: #667eea;'>Dopamine Reset + IKS</h1>
@@ -86,7 +122,7 @@ with st.sidebar:
     sleep = st.number_input("😴 Sleep (hrs)", min_value=0.0, max_value=16.0, value=7.0, step=1.0, key="slider_sleep")
     screen = st.number_input("📱 Screen Time (hrs)", min_value=0.0, max_value=16.0, value=4.0, step=1.0, key="slider_screen")
     goal_pct = st.slider("✅ Goal %", 0, 100, 70, key="slider_goal")
-    addiction = st.selectbox("Addiction", ['social media', 'gaming', 'food', 'smoking'], key="select_addiction")
+    dynamic_addiction_inputs()
 
     if st.button("🔮 Predict & Analyze", use_container_width=True, key="predict_btn"):
         # Input validation
@@ -94,7 +130,8 @@ with st.sidebar:
             'mood': max(1, min(5, float(mood))),
             'sleep_hours': max(0.1, min(12.0, float(sleep))),
             'screen_time': max(0.0, float(screen)),
-            'addiction_type': addiction,
+    'addiction_type': st.session_state.get('addiction_type', 'Social Media'),
+    **st.session_state.get('addiction_metric', {}),
             'goal_achieved': goal_pct / 100.0
         }
         
@@ -156,6 +193,8 @@ with st.sidebar:
         st.dataframe(pd.DataFrame(st.session_state.intervention_history[-5:]), use_container_width=True)
 
     st.markdown("---")
+
+
 
 def meditation_tab():
     """Enhanced Guided Meditation with second-wise timer."""

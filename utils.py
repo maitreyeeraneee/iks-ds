@@ -138,6 +138,12 @@ def get_state_key(triguna: Dict, risk_score: float, addiction_type: str) -> str:
 
 def rl_get_best_action(state_key: str, interventions: List[Dict], q_table: Dict, epsilon: float = 0.1) -> Dict:
     """Epsilon-greedy action selection."""
+    if not interventions:
+        return {
+            "action": "Mindful pause: Observe breath",
+            "verse": "Gita 2.56: Steady wisdom amid disturbance"
+        }
+        
     if state_key not in q_table:
         q_table[state_key] = {i: 0.0 for i in range(len(interventions))}
     
@@ -145,6 +151,8 @@ def rl_get_best_action(state_key: str, interventions: List[Dict], q_table: Dict,
         return np.random.choice(interventions)
     
     q_values = q_table[state_key]
+    if not q_values:
+        return interventions[0]
     best_idx = max(q_values, key=q_values.get)
     return interventions[best_idx]
 
@@ -192,7 +200,19 @@ def intervention_engine(risk_state: str, triguna: Dict[str, float], addiction_ty
     risk_score = predictions['risk_score'] if predictions else 50
     state_key = get_state_key(triguna, risk_score, addiction_type)
     
+    addiction_type = addiction_type.lower()
+    if "junk food" in addiction_type:
+        addiction_type = "food"
+    if "alcohol" in addiction_type:
+        addiction_type = "smoking"  # fallback to closest
     interventions = iks_data.get(addiction_type, {}).get(dominant_guna, [])
+    
+    if not interventions:
+        interventions = [
+            {"action": "Deep belly breathing 10x", "verse": "Gita 4.29: Breath offering in Yoga"},
+            {"action": "Gita affirmation: I control my mind", "verse": "Gita 6.36: Mind is friend or enemy"},
+            {"action": "Warm lemon water sip", "verse": "Gita 17.8: Sattvic intake promotes clarity"}
+        ]
     
     # RL best action
     best_int = rl_get_best_action(state_key, interventions, session_state.get('rl_q_table', config.RL_Q_TABLE))
